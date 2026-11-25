@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIC Aeroespacial — Hub Paramétrico UAV VTOL</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #263449; --border: #334155;
+    --text: #f1f5f9; --muted: #94a3b8; --accent: #38bdf8; --accent2: #22c55e;
+    --warn: #f59e0b; --danger: #ef4444; --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.45; }
+  header {
+    background: linear-gradient(135deg, #0b1324, #172554);
+    border-bottom: 1px solid var(--border); padding: 14px 20px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  header .sub { font-size: 0.8rem; color: var(--muted); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, .btn {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    padding: 7px 12px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; font-weight: 500;
+    transition: 0.15s;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: #0284c7; border-color: #0ea5e9; color: #fff; }
+  button.primary:hover { background: #0369a1; }
+  button.success { background: #15803d; border-color: #22c55e; color: #fff; }
+
+  .kpi-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px; padding: 12px 20px; background: #111c33; border-bottom: 1px solid var(--border);
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+  }
+  .kpi .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi .val { font-size: 1.25rem; font-weight: 700; margin-top: 2px; color: var(--accent); }
+  .kpi .note { font-size: 0.72rem; color: var(--muted); }
+  .kpi.ok .val { color: var(--accent2); }
+  .kpi.warn .val { color: var(--warn); }
+  .kpi.bad .val { color: var(--danger); }
+
+  nav.tabs {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 20px 0;
+    border-bottom: 1px solid var(--border); background: #0d1526;
+  }
+  nav.tabs button {
+    border-bottom: none; border-radius: 8px 8px 0 0; padding: 9px 14px;
+    background: transparent; color: var(--muted); border-color: transparent;
+  }
+  nav.tabs button.active {
+    background: var(--panel); color: var(--accent); border-color: var(--border);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  main { padding: 18px 20px; max-width: 1480px; margin: 0 auto; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 0.98rem; color: var(--accent);
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card h3 { margin: 12px 0 8px; font-size: 0.85rem; color: var(--purple); }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 0.74rem; color: var(--muted); }
+  .field input, .field select {
+    background: #0f172a; border: 1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius: 5px; font-size: 0.85rem;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--muted); font-weight: 600; background: #162033; position: sticky; top: 0; }
+  tr.highlight { background: rgba(56, 189, 248, 0.12); font-weight: 600; }
+  .scroll-tbl { max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+
+  canvas { width: 100%; background: #0b1220; border: 1px solid var(--border); border-radius: 8px; display: block; }
+  textarea {
+    width: 100%; min-height: 150px; background: #0b1220; color: #e2e8f0;
+    border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.8rem;
+  }
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center;
+    color: var(--muted); cursor: pointer; margin-bottom: 12px; transition: 0.2s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); color: var(--text); background: rgba(56,189,248,0.06); }
+  .pill { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 0.7rem; font-weight: 600; }
+  .pill.ok { background: rgba(34,197,94,0.18); color: #4ade80; }
+  .pill.warn { background: rgba(245,158,11,0.18); color: #fbbf24; }
+  .pill.bad { background: rgba(239,68,68,0.18); color: #f87171; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>PIC Engenharia Aeroespacial — Hub Paramétrico UAV VTOL Anti-Drone</h1>
+    <div class="sub">Fonte única de verdade acoplada: todas as 6 áreas atualizam em cadeia ao mudar qualquer entrada</div>
+  </div>
+  <div class="toolbar">
+    <button onclick="loadPreset('rev3')" class="primary">Preset: Rev. 3 (LPPT 22,5 kg)</button>
+    <button onclick="loadPreset('rev1')">Preset: Rev. 1/2 (9,7 kg)</button>
+    <button onclick="exportJSON()" class="success">Exportar .JSON</button>
+    <button onclick="openTab('sync')">Importar .PY / Relatório</button>
+  </div>
+</header>
+
+<section class="kpi-strip" id="kpiStrip"></section>
+
+<nav class="tabs" id="tabNav">
+  <button class="active" data-tab="p1">1. Payload, Bateria &amp; Massas</button>
+  <button data-tab="p2">2. Dados Históricos &amp; Regressão</button>
+  <button data-tab="p3">3. Design Points (Asa + VTOL)</button>
+  <button data-tab="p4">4. Perfis Alares &amp; Asa</button>
+  <button data-tab="p5">5. Estabilidade &amp; Planta</button>
+  <button data-tab="p6">6. Missão LPPT &amp; Frota</button>
+  <button data-tab="sync">Sincronizar / Código / LaTeX</button>
+</nav>
+
+<main>
+  <!-- TAB 1: PAYLOAD, BATTERY & WEIGHT BREAKDOWN -->
+  <div class="tab-pane active" id="tab-p1">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Grupo 3 — Carga Útil, Eletrónica e Bateria</h2>
+        <div class="form-grid">
+          <div class="field"><label>MTOM Projeto [kg]</label><input type="number" step="0.1" data-k="M0"></div>
+          <div class="field"><label>Limite Legal MTOM [kg]</label><input type="number" step="0.5" data-k="M_limit"></div>
+          <div class="field"><label>Massa Jammer RF [kg]</label><input type="number" step="0.05" data-k="m_jammer"></div>
+          <div class="field"><label>Antena + Torre/Nicho [kg]</label><input type="number" step="0.05" data-k="m_antena"></div>
+          <div class="field"><label>Detetor RF / Câmara [kg]</label><input type="number" step="0.05" data-k="m_detetor"></div>
+          <div class="field"><label>Outro Payload / Lastro [kg]</label><input type="number" step="0.05" data-k="m_extra"></div>
+          <div class="field"><label>Potência Jammer Pico [W]</label><input type="number" step="5" data-k="P_jam_pico"></div>
+          <div class="field"><label>Ciclo Serviço Jammer [%]</label><input type="number" step="1" data-k="duty_jam"></div>
+          <div class="field"><label>Detetor + Proc. [W]</label><input type="number" step="1" data-k="P_det"></div>
+          <div class="field"><label>Aviónica Contínua [W]</label><input type="number" step="1" data-k="P_av"></div>
+          <div class="field"><label>Densidade Bateria [Wh/kg]</label><input type="number" step="5" data-k="ebat_wh"></div>
+          <div class="field"><label>Fração Utilizável Bat. [%]</label><input type="number" step="1" data-k="bat_util"></div>
+        </div>
+        <h3>Parâmetros Estruturais &amp; Propulsivos (Aulas 1a/1b/3b)</h3>
+        <div class="form-grid">
+          <div class="field"><label>k_str (calibrado DeltaQuad)</label><input type="number" step="0.002" data-k="k_str"></div>
+          <div class="field"><label>OW (Fração Sistemas / M_empty)</label><input type="number" step="0.01" data-k="OW"></div>
+          <div class="field"><label>k_em (Fator suporte/hélice)</label><input type="number" step="0.05" data-k="k_em"></div>
+          <div class="field"><label>PW_motor [kW/kg]</label><input type="number" step="0.1" data-k="PWe"></div>
+          <div class="field"><label>PW_esc [kW/kg]</label><input type="number" step="0.5" data-k="PWesc"></div>
+          <div class="field"><label>η_ES (Elétrico cruzeiro)</label><input type="number" step="0.01" data-k="eta_ES"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Repartição de Massa Calculada &amp; Energia</h2>
+        <div id="massTableWrap"></div>
+        <canvas id="massChart" height="230" style="margin-top:12px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: HISTORICAL DATA & REGRESSION -->
+  <div class="tab-pane" id="tab-p2">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Grupo 4 — Regressão Linear Multivariável (18 VTOL Elétricos)</h2>
+        <div id="regSummary"></div>
+        <canvas id="regChart" height="280" style="margin-top:10px;"></canvas>
+      </div>
+      <div class="card">
+        <h2>Base de Dados Histórica (Editável / Comparativa)</h2>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="field"><label>Novo Modelo</label><input type="text" id="newModel" placeholder="Ex: WingtraOne"></div>
+          <div class="field"><label>W0 [kg]</label><input type="number" step="0.1" id="newW0" value="4.5"></div>
+          <div class="field"><label>W_bat [kg]</label><input type="number" step="0.1" id="newWbat" value="1.1"></div>
+          <div class="field"><label>W_pay [kg]</label><input type="number" step="0.1" id="newWpay" value="0.8"></div>
+        </div>
+        <button onclick="addRefDrone()" class="primary" style="margin-bottom:10px;">+ Adicionar à Base &amp; Recalcular Regressão</button>
+        <div class="scroll-tbl">
+          <table id="histTable"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: DESIGN POINTS -->
+  <div class="tab-pane" id="tab-p3">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Grupos 1 &amp; 2 — Entradas de Voo em Frente &amp; VTOL</h2>
+        <div class="form-grid">
+          <div class="field"><label>Carga Alar W/S [N/m²]</label><input type="number" step="1" data-k="WS"></div>
+          <div class="field"><label>Alongamento AR</label><input type="number" step="0.2" data-k="AR"></div>
+          <div class="field"><label>Vel. Perda Máx. Vs [m/s]</label><input type="number" step="0.5" data-k="Vs_req"></div>
+          <div class="field"><label>Vel. Máxima Req. [m/s]</label><input type="number" step="0.5" data-k="V_max"></div>
+          <div class="field"><label>Subida Asa RoC [m/s]</label><input type="number" step="0.2" data-k="RoC"></div>
+          <div class="field"><label>Fator carga curva n</label><input type="number" step="0.05" data-k="n_turn"></div>
+          <div class="field"><label>Rendimento hélice η_p</label><input type="number" step="0.01" data-k="eta_p"></div>
+          <div class="field"><label>Carga no Disco W/A [N/m²]</label><input type="number" step="5" data-k="WA"></div>
+          <div class="field"><label>Nº Rotores VTOL</label><input type="number" step="1" data-k="n_rot"></div>
+          <div class="field"><label>Figure of Merit (FoM)</label><input type="number" step="0.01" data-k="FoM"></div>
+          <div class="field"><label>T/W Mínimo Hover</label><input type="number" step="0.05" data-k="TW_hover"></div>
+          <div class="field"><label>Subida / Descida VTOL [m/s]</label><input type="number" step="0.2" data-k="V_vert_up"></div>
+          <div class="field"><label>Altitude [m] / Temp [°C]</label><input type="number" step="1" data-k="T_hot"></div>
+        </div>
+        <div id="dpSummary" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h2>Diagrama de Restrições — Voo de Asa (W/S vs P/W)</h2>
+        <canvas id="wingDpChart" height="260"></canvas>
+        <h2 style="margin-top:14px;">Diagrama de Restrições — Voo Vertical (W/A vs P/W, Dia Quente)</h2>
+        <canvas id="vtolDpChart" height="240"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: AIRFOILS & WING -->
+  <div class="tab-pane" id="tab-p4">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Grupo 5 — Seleção de Perfil Alar (Dados Reais Excel Re=500k / 160k)</h2>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="field">
+            <label>Perfil da Asa Exterior / Principal</label>
+            <select data-k="airfoil" id="airfoilSelect"></select>
+          </div>
+          <div class="field"><label>Fator Oswald e</label><input type="number" step="0.01" data-k="e_oswald"></div>
+          <div class="field"><label>CD0 base parasita (s/ asa)</label><input type="number" step="0.0005" data-k="CD0_body"></div>
+          <div class="field"><label>CD0 asa+winglets</label><input type="number" step="0.0005" data-k="CD0_wing"></div>
+          <div class="field"><label>Afilamento λ</label><input type="number" step="0.02" data-k="taper"></div>
+          <div class="field"><label>Enflechamento Λ_LE [°]</label><input type="number" step="1" data-k="sweep_LE"></div>
+        </div>
+        <div class="scroll-tbl">
+          <table id="airfoilTable"></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Comparação Polar &amp; Geometria Calculada da Asa</h2>
+        <canvas id="airfoilChart" height="240"></canvas>
+        <div id="wingGeoWrap" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: STABILITY & PLANFORM -->
+  <div class="tab-pane" id="tab-p5">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Estabilidade Longitudinal &amp; Direcional (Asa Voadora)</h2>
+        <div class="form-grid">
+          <div class="field"><label>Margem Estática SM [%]</label><input type="number" step="0.5" data-k="SM_pct"></div>
+          <div class="field"><label>Washout ponta [°]</label><input type="number" step="0.5" data-k="washout"></div>
+          <div class="field"><label>Área cada Winglet [m²]</label><input type="number" step="0.01" data-k="S_winglet"></div>
+          <div class="field"><label>Braço Winglet l_VS [m]</label><input type="number" step="0.02" data-k="l_VS"></div>
+          <div class="field"><label>CL_max s/ equilíbrio</label><input type="number" step="0.01" data-k="CLmax_clean"></div>
+          <div class="field"><label>Penalização trim CLmax</label><input type="number" step="0.01" data-k="trim_loss"></div>
+        </div>
+        <div id="stabWrap" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h2>Planta da Aeronave à Escala (CG, Ponto Neutro &amp; Rotores)</h2>
+        <svg id="planformSvg" viewBox="-260 -70 520 330" style="width:100%; background:#0b1220; border:1px solid var(--border); border-radius:8px;"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: MISSION, LPPT & FLEET -->
+  <div class="tab-pane" id="tab-p6">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Operação no Aeroporto (LPPT) &amp; Dimensionamento de Frota</h2>
+        <div class="form-grid">
+          <div class="field"><label>Perímetro Patrulha [km]</label><input type="number" step="0.5" data-k="perimetro_km"></div>
+          <div class="field"><label>Vento Médio [m/s]</label><input type="number" step="0.5" data-k="V_vento_med"></div>
+          <div class="field"><label>Vento de Projeto [m/s]</label><input type="number" step="0.5" data-k="V_vento_proj"></div>
+          <div class="field"><label>Distância Trânsito [km]</label><input type="number" step="0.5" data-k="d_transito"></div>
+          <div class="field"><label>Vel. Trânsito [m/s]</label><input type="number" step="1" data-k="V_transito"></div>
+          <div class="field"><label>Tempo Turnaround Solo [min]</label><input type="number" step="1" data-k="t_turnaround"></div>
+          <div class="field"><label>Reserva Missão t_R [min]</label><input type="number" step="1" data-k="t_reserva"></div>
+          <div class="field"><label>Reserva Empenhamento [min]</label><input type="number" step="1" data-k="t_res_jam"></div>
+        </div>
+        <div id="missionWrap" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h2>Sensibilidade: Tempo de Revisita vs Vento &amp; Energia por Fase</h2>
+        <canvas id="revisitChart" height="230"></canvas>
+        <div id="phaseTableWrap" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB SYNC -->
+  <div class="tab-pane" id="tab-sync">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Importar Ficheiro de Código (.py / .json) ou Texto de Relatório</h2>
+        <div class="dropzone" id="dropzone">
+          Arrasta para aqui um ficheiro <strong>.py</strong> (ex: <code>diagrama_restricoes.py</code>, <code>sizing.py</code>), <strong>.json</strong>, ou clica para escolher.
+          <input type="file" id="fileInput" style="display:none" accept=".py,.json,.txt,.md,.csv">
+        </div>
+        <textarea id="importText" placeholder="Ou cola aqui trechos de código Python (ex: MTOW = 22.5, AR = 6, WS_proj = 78) ou texto do relatório (ex: MTOM 22,5 kg; carga útil 2,2 kg)..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="primary" onclick="parseImportedText()">Detetar &amp; Aplicar Parâmetros</button>
+          <button onclick="document.getElementById('importText').value=''">Limpar</button>
+        </div>
+        <div id="importLog" style="margin-top:10px; font-size:0.82rem;"></div>
+      </div>
+      <div class="card">
+        <h2>Exportação Automática para Python &amp; LaTeX</h2>
+        <p style="font-size:0.8rem; color:var(--muted); margin-top:0;">Sempre que alguém alterar um dado no Hub, o código Python e a tabela do relatório abaixo são gerados automaticamente:</p>
+        <textarea id="exportCode" readonly style="min-height:260px;"></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="success" onclick="copyExport()">Copiar Código/Resumo</button>
+          <button onclick="exportJSON()">Descarregar estado_projeto.json</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ==================== DADOS HISTÓRICOS (18 VTOL ELÉTRICOS, RELATÓRIO 19/NOV) ====================
+const histVTOL = [
+  { m:"DeltaQuad Pro", W0:6.2, Wbat:1.70, Wpay:1.20, E:110, Vcr:16.0 },
+  { m:"DeltaQuad Evo", W0:10.0, Wbat:2.00, Wpay:3.20, E:272, Vcr:16.5 },
+  { m:"DeltaQuad Evo TAC", W0:11.0, Wbat:2.00, Wpay:3.20, E:244, Vcr:16.7 },
+  { m:"Yangda Mapird Plus", W0:11.5, Wbat:4.72, Wpay:1.78, E:134, Vcr:19.5 },
+  { m:"Yangda FW-250", W0:12.0, Wbat:4.50, Wpay:2.00, E:120, Vcr:23.3 },
+  { m:"Yangda Sky Fury", W0:13.5, Wbat:4.72, Wpay:2.20, E:200, Vcr:24.5 },
+  { m:"Foxtech AYK-250", W0:15.0, Wbat:5.10, Wpay:2.90, E:210, Vcr:null },
+  { m:"Beyond Vision VTOne", W0:16.5, Wbat:3.00, Wpay:5.00, E:150, Vcr:null },
+  { m:"Yangda Sky Whale Mini", W0:18.5, Wbat:5.10, Wpay:3.40, E:193, Vcr:24.3 },
+  { m:"Foxtech Great Shark 330", W0:20.0, Wbat:8.00, Wpay:3.00, E:null, Vcr:22.5 },
+  { m:"Yangda FW-320", W0:23.0, Wbat:7.20, Wpay:6.04, E:150, Vcr:23.3 },
+  { m:"Yangda Sky Whale", W0:34.0, Wbat:7.20, Wpay:10.80, E:90, Vcr:22.9 },
+  { m:"DroneVolt Heliplane LRS 240", W0:8.0, Wbat:2.35, Wpay:1.00, E:90, Vcr:22.5 },
+  { m:"Foxtech Loong 2160", W0:8.0, Wbat:1.60, Wpay:0.80, E:120, Vcr:19.0 },
+  { m:"Foxtech Baby Shark 260 Pro", W0:13.0, Wbat:4.70, Wpay:1.30, E:198, Vcr:21.5 },
+  { m:"Foxtech Saber 210", W0:13.0, Wbat:4.70, Wpay:1.50, E:210, Vcr:19.5 },
+  { m:"CUAV Raefly VT260", W0:13.5, Wbat:5.04, Wpay:2.50, E:210, Vcr:20.5 },
+  { m:"Makeflyeasy Fighter", W0:13.5, Wbat:4.80, Wpay:2.50, E:131, Vcr:19.5 }
+];
+
+// ==================== PERFIS ALARES FINALISTAS (EXCEL SEMANA 22/11) ====================
+const airfoilsDB = {
+  "S5010": { name:"Selig S5010 (reflexo 9,8%)", clMax500:1.282, cdMin500:0.00632, ldMax500:86.6, ldAvg500:62.5, cm0_500:0.0015, clMax160:1.193, ldMax160:57.3, reflex:true },
+  "S5020": { name:"Selig S5020 (reflexo 8,4%)", clMax500:1.270, cdMin500:0.00641, ldMax500:87.9, ldAvg500:67.0, cm0_500:0.0017, clMax160:1.203, ldMax160:58.5, reflex:true },
+  "MH 45": { name:"MH 45 (9,85%)", clMax500:1.297, cdMin500:0.00592, ldMax500:81.4, ldAvg500:64.7, cm0_500:-0.0045, clMax160:1.155, ldMax160:55.5, reflex:true },
+  "MH 60": { name:"MH 60 (10,08%)", clMax500:1.212, cdMin500:0.00597, ldMax500:83.1, ldAvg500:65.6, cm0_500:-0.0075, clMax160:1.127, ldMax160:56.1, reflex:true },
+  "PW51":  { name:"PW51 (reflexo)", clMax500:1.297, cdMin500:0.00561, ldMax500:76.5, ldAvg500:58.0, cm0_500:-0.0014, clMax160:1.180, ldMax160:51.6, reflex:true },
+  "NACA 25112": { name:"NACA 25112 (intermédio)", clMax500:1.360, cdMin500:0.00728, ldMax500:90.0, ldAvg500:53.6, cm0_500:0.0053, clMax160:1.247, ldMax160:56.2, reflex:false },
+  "MH 78": { name:"MH 78 (14,47% centro)", clMax500:1.441, cdMin500:0.00826, ldMax500:74.0, ldAvg500:42.6, cm0_500:0.0472, clMax160:1.023, ldMax160:34.4, reflex:true }
+};
+
+// ==================== PRESETS ====================
+const PRESETS = {
+  rev3: {
+    M0: 22.5, M_limit: 25.0, m_jammer: 1.5, m_antena: 0.4, m_detetor: 0.3, m_extra: 0.0,
+    P_jam_pico: 100, duty_jam: 5, P_det: 20, P_av: 15, ebat_wh: 250, bat_util: 80,
+    k_str: 0.278, OW: 0.22, k_em: 1.5, PWe: 5.3, PWesc: 21, eta_ES: 0.788,
+    WS: 78, AR: 6.0, Vs_req: 15.0, V_max: 25.0, RoC: 2.5, n_turn: 1.05, eta_p: 0.78,
+    WA: 140, n_rot: 4, FoM: 0.61, TW_hover: 1.5, V_vert_up: 2.5, T_hot: 34,
+    airfoil: "S5010", e_oswald: 0.921, CD0_body: 0.00699, CD0_wing: 0.00751, taper: 0.35, sweep_LE: 30,
+    SM_pct: 14.1, washout: -6.0, S_winglet: 0.243, l_VS: 0.72, CLmax_clean: 1.026, trim_loss: 0.274,
+    perimetro_km: 12.5, V_vento_med: 4.6, V_vento_proj: 10.0, d_transito: 1.5, V_transito: 20.0,
+    t_turnaround: 20, t_reserva: 5, t_res_jam: 10
+  },
+  rev1: {
+    M0: 9.7, M_limit: 25.0, m_jammer: 1.0, m_antena: 1.05, m_detetor: 0.4, m_extra: 0.05,
+    P_jam_pico: 100, duty_jam: 20, P_det: 0, P_av: 25, ebat_wh: 200, bat_util: 85,
+    k_str: 0.30, OW: 0.22, k_em: 1.5, PWe: 5.3, PWesc: 21, eta_ES: 0.65,
+    WS: 140, AR: 9.0, Vs_req: 13.3, V_max: 33.0, RoC: 2.0, n_turn: 1.0, eta_p: 0.85,
+    WA: 143, n_rot: 4, FoM: 0.65, TW_hover: 1.5, V_vert_up: 2.0, T_hot: 15,
+    airfoil: "NACA 25112", e_oswald: 0.80, CD0_body: 0.024, CD0_wing: 0.012, taper: 0.50, sweep_LE: 0,
+    SM_pct: 12.0, washout: -2.0, S_winglet: 0.08, l_VS: 0.80, CLmax_clean: 1.30, trim_loss: 0.0,
+    perimetro_km: 13.7, V_vento_med: 4.6, V_vento_proj: 10.0, d_transito: 5.0, V_transito: 28.0,
+    t_turnaround: 60, t_reserva: 10, t_res_jam: 2
+  }
+};
+
+let S = JSON.parse(localStorage.getItem('pic_uav_state') || 'null') || { ...PRESETS.rev3 };
+
+// ==================== REGRESSÃO LINEAR MÚLTIPLA (OLS 3x3) ====================
+function fitRegression() {
+  const n = histVTOL.length;
+  // X = [1, Wpay, Wbat], y = W0
+  let XtX = [[0,0,0],[0,0,0],[0,0,0]], Xty = [0,0,0];
+  let sumY = 0;
+  histVTOL.forEach(d => {
+    const x = [1, d.Wpay, d.Wbat];
+    sumY += d.W0;
+    for (let i=0;i<3;i++) {
+      Xty[i] += x[i]*d.W0;
+      for (let j=0;j<3;j++) XtX[i][j] += x[i]*x[j];
+    }
+  });
+  // Gauss-Jordan 3x3
+  const M = XtX.map((r,i) => [...r, Xty[i]]);
+  for (let i=0;i<3;i++) {
+    let piv = M[i][i];
+    for (let j=i;j<4;j++) M[i][j] /= piv;
+    for (let k=0;k<3;k++) if (k!==i) {
+      let f = M[k][i];
+      for (let j=i;j<4;j++) M[k][j] -= f*M[i][j];
+    }
+  }
+  const b = [M[0][3], M[1][3], M[2][3]];
+  const ybar = sumY / n;
+  let sse = 0, sst = 0;
+  histVTOL.forEach(d => {
+    const yhat = b[0] + b[1]*d.Wpay + b[2]*d.Wbat;
+    sse += (d.W0 - yhat)**2;
+    sst += (d.W0 - ybar)**2;
+  });
+  const r2 = 1 - sse/sst;
+  const r2aj = 1 - (1-r2)*(n-1)/(n-3);
+  const s = Math.sqrt(sse/(n-3));
+  return { b, r2, r2aj, s, n };
+}
+
+// ==================== MODELO ACOPLADO DE ENGENHARIA ====================
+function computeAll() {
+  const g = 9.81, rho0 = 1.225;
+  const rho_op = 1.212; // 114 m LPPT
+  const rho_hot = 100000 / (287.05 * (273.15 + S.T_hot)); // ISA+ dia quente
+  const W = S.M0 * g;
+  const M_payload = S.m_jammer + S.m_antena + S.m_detetor + S.m_extra;
+
+  // Aerodinâmica & Asa
+  const area_S = W / S.WS;
+  const b = Math.sqrt(S.AR * area_S);
+  const cr = (2 * area_S) / (b * (1 + S.taper));
+  const ct = cr * S.taper;
+  const mac = cr - (2*(cr - ct)*(cr/2 + ct)) / (3*(cr + ct));
+  const y_mac = (b/6) * ((1 + 2*S.taper)/(1 + S.taper));
+  const x_ac = y_mac * Math.tan(S.sweep_LE * Math.PI/180) + 0.25 * mac;
+
+  const af = airfoilsDB[S.airfoil] || airfoilsDB["S5010"];
+  const CD0 = S.CD0_wing + S.CD0_body;
+  const k = 1 / (Math.PI * S.e_oswald * S.AR);
+  const k_prime = 0.02, CL_minD = 0.43;
+
+  // Estabilidade & CLmax equilibrado
+  const sweep_c4 = Math.atan(Math.tan(S.sweep_LE*Math.PI/180) - (1-S.taper)/(S.AR*(1+S.taper)));
+  const CLmax_trim = Math.max(0.45, (af.clMax500 * 0.855 * Math.cos(sweep_c4)) - S.trim_loss);
+  const CL_alpha = (2*Math.PI*S.AR) / (2 + Math.sqrt(4 + S.AR**2*(1 + Math.tan(sweep_c4)**2)));
+  const SM = S.SM_pct / 100;
+  const CM_alpha = -CL_alpha * SM;
+  const x_np = x_ac + 0.037; // pequena contribuição winglets/corpo
+  const x_cg = x_np - SM * mac;
+
+  // Velocidades
+  const Vs = Math.sqrt((2 * S.WS) / (rho0 * CLmax_trim));
+  const WS_stall_max = 0.5 * rho_op * S.Vs_req**2 * CLmax_trim;
+  const V_patrol = Math.max(1.2 * Vs, 1.5 * S.V_vento_proj);
+
+  // Polar helper
+  function dragAt(V, ws, n_load=1.0, roc=0) {
+    const q = 0.5 * rho_op * V * V;
+    const cl = (n_load * ws) / q;
+    const cd = CD0 + k * cl * cl + k_prime * (cl - CL_minD)**2;
+    const pw_shaft = (roc + V * (cd / cl)) / S.eta_p; // W/N
+    return { cl, cd, ld: cl/cd, pw_shaft };
+  }
+
+  const patrolAero = dragAt(V_patrol, S.WS, S.n_turn, 0);
+  const transitAero = dragAt(S.V_transito, S.WS, 1.0, 0);
+  const vmaxAero = dragAt(S.V_max, S.WS, 1.0, 0);
+  const climbAero = dragAt(Math.max(1.3*Vs, 15.7), S.WS, 1.0, S.RoC);
+
+  const P_shaft_patrol = patrolAero.pw_shaft * W;
+  const P_shaft_transit = transitAero.pw_shaft * W;
+  const P_shaft_vmax = vmaxAero.pw_shaft * W;
+  const P_shaft_climb = climbAero.pw_shaft * W;
+  const PW_wing_design = Math.max(climbAero.pw_shaft, vmaxAero.pw_shaft, patrolAero.pw_shaft);
+  const P_cruise_inst = PW_wing_design * W;
+
+  // VTOL Design Point
+  function vtolPW(wa) {
+    const vh = Math.sqrt(wa / (2 * rho_hot));
+    const pw_hover = vh / S.FoM;
+    const pw_up = (S.V_vert_up/2 + Math.sqrt((S.V_vert_up/2)**2 + vh*vh)) / S.FoM;
+    // Aproximação VRS descida -1.5 m/s (função quártica típica aula 2b)
+    const Vd = -1.5;
+    const r = Vd / vh; // negativo
+    const vi_ratio = 1 - 1.125*r - 1.372*r*r - 1.718*r*r*r - 0.655*r*r*r*r;
+    const pw_down = Math.max(0.5*pw_hover, ((Vd + vi_ratio*vh)/S.FoM));
+    const pw_env = Math.max(pw_hover, pw_up, pw_down);
+    return { pw_hover, pw_up, pw_down, pw_env };
+  }
+  const vtolDP = vtolPW(S.WA);
+  const P_vtol_dp = vtolDP.pw_env * W;
+  const P_vtol_hover15 = (S.TW_hover ** 1.5) * vtolDP.pw_hover * W;
+  const P_vtol_inst = Math.max(P_vtol_dp, P_vtol_hover15);
+  const A_total = W / S.WA;
+  const D_rot_m = 2 * Math.sqrt((A_total / S.n_rot) / Math.PI);
+  const D_rot_in = D_rot_m / 0.0254;
+
+  // Massas (Eq. 1 da Rev 3)
+  const AR_ref = 8.6, WS_ref = 117.0;
+  const M_str = S.k_str * S.M0 * (0.4 + 0.6 * (S.AR / AR_ref)**0.5 * (WS_ref / S.WS)**0.758);
+  const M_prop = S.k_em * ((P_vtol_inst + P_cruise_inst)/1000) * (1/S.PWe + 1/S.PWesc);
+  const M_sys = (S.OW / (1 - S.OW)) * (M_str + M_prop);
+  const M_empty = M_str + M_prop + M_sys;
+  const M_bat = S.M0 - M_payload - M_empty;
+
+  // Energia & Autonomia (Eq. 2 da Rev 3)
+  const E_bat_Wh = Math.max(0, M_bat * S.ebat_wh);
+  const E_util_Wh = E_bat_Wh * (S.bat_util / 100);
+  const P_jam_avg = S.P_jam_pico * (S.duty_jam / 100);
+  const P_elec_base = S.P_av + S.P_det + P_jam_avg;
+  const P_elec_patrol = P_shaft_patrol / S.eta_ES + P_elec_base;
+  const P_elec_transit = P_shaft_transit / S.eta_ES + P_elec_base;
+  const P_elec_climb = P_shaft_climb / S.eta_ES + P_elec_base;
+
+  // Fases fixas
+  const E_vtol_up = (vtolDP.pw_hover * W / S.eta_ES + S.P_av + S.P_det) * (42 / 3600);
+  const E_climb = P_elec_climb * (28 / 3600);
+  const t_transit_s = (2 * S.d_transito * 1000) / S.V_transito;
+  const E_transit = P_elec_transit * (t_transit_s / 3600);
+  const E_vtol_dn = (vtolDP.pw_env * W / S.eta_ES + S.P_av + S.P_det) * (50 / 3600);
+  const E_res_flight = P_elec_patrol * (S.t_reserva / 60);
+  const E_res_jam = S.P_jam_pico * (S.t_res_jam / 60);
+
+  const E_fixed = E_vtol_up + E_climb + E_transit + E_vtol_dn + E_res_flight + E_res_jam;
+  const E_patrol_avail = Math.max(0, E_util_Wh - E_fixed);
+  const t_patrol_min = P_elec_patrol > 0 ? (E_patrol_avail / P_elec_patrol) * 60 : 0;
+
+  // Operação & Frota LPPT
+  function revisitMin(V_wind) {
+    // Aproximação elipse com vento ao longo do eixo: média harmónica das velocidades solo
+    if (V_wind >= V_patrol) return Infinity;
+    const V_eff = (V_patrol**2 - 0.5*V_wind**2) / V_patrol;
+    return (S.perimetro_km * 1000 / V_eff) / 60;
+  }
+  const t_rev_0 = revisitMin(0);
+  const t_rev_med = revisitMin(S.V_vento_med);
+  const t_rev_proj = revisitMin(S.V_vento_proj);
+  const voltas = t_rev_med > 0 ? t_patrol_min / t_rev_med : 0;
+  const n_rotacao = t_patrol_min > 0 ? Math.ceil((t_patrol_min + S.t_turnaround + 5) / t_patrol_min) : 99;
+  const n_frota = n_rotacao + 1;
+
+  // Regressão
+  const reg = fitRegression();
+  const W0_reg = reg.b[0] + reg.b[1]*M_payload + reg.b[2]*Math.max(0, M_bat);
+
+  return {
+    M_payload, M_str, M_prop, M_sys, M_empty, M_bat, E_bat_Wh, E_util_Wh,
+    area_S, b, cr, ct, mac, x_ac, x_np, x_cg, CM_alpha, CL_alpha, CLmax_trim,
+    CD0, k, Vs, WS_stall_max, V_patrol, patrolAero, P_shaft_patrol, P_shaft_climb,
+    P_cruise_inst, P_vtol_inst, vtolDP, D_rot_in,
+    P_elec_patrol, P_elec_transit, E_vtol_up, E_climb, E_transit, E_vtol_dn,
+    E_res_flight, E_res_jam, E_patrol_avail, t_patrol_min,
+    t_rev_0, t_rev_med, t_rev_proj, voltas, n_rotacao, n_frota,
+    reg, W0_reg, rho_op, rho_hot, W
+  };
+}
+
+// ==================== RENDERIZAÇÃO DE UI E GRÁFICOS ====================
+function render() {
+  const C = computeAll();
+
+  // KPI Strip
+  const batOk = C.M_bat > 0.5 && S.M0 <= S.M_limit;
+  const stallOk = S.WS <= C.WS_stall_max;
+  document.getElementById('kpiStrip').innerHTML = `
+    <div class="kpi ${S.M0 <= S.M_limit ? 'ok' : 'bad'}">
+      <div class="lbl">MTOM Projeto / Limite</div>
+      <div class="val">${S.M0.toFixed(1)} kg</div>
+      <div class="note">Margem até ${S.M_limit} kg: ${((1 - S.M0/S.M_limit)*100).toFixed(1)}%</div>
+    </div>
+    <div class="kpi ${C.t_patrol_min >= 60 ? 'ok' : 'warn'}">
+      <div class="lbl">Autonomia Patrulha</div>
+      <div class="val">${C.t_patrol_min.toFixed(0)} min</div>
+      <div class="note">${(C.t_patrol_min/60).toFixed(2)} h · ${C.voltas.toFixed(1)} voltas</div>
+    </div>
+    <div class="kpi ${batOk ? '' : 'bad'}">
+      <div class="lbl">Bateria / Carga Útil</div>
+      <div class="val">${C.M_bat.toFixed(2)} / ${C.M_payload.toFixed(2)} kg</div>
+      <div class="note">${(C.E_bat_Wh/1000).toFixed(2)} kWh (${(C.M_bat/S.M0*100).toFixed(1)}% M0)</div>
+    </div>
+    <div class="kpi ${stallOk ? '' : 'bad'}">
+      <div class="lbl">Asa (S / b / Vs)</div>
+      <div class="val">${C.area_S.toFixed(2)} m² · ${C.b.toFixed(2)} m</div>
+      <div class="note">Vs=${C.Vs.toFixed(1)} m/s | V_pat=${C.V_patrol.toFixed(1)} m/s</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Aerodinâmica (L/D)</div>
+      <div class="val">${C.patrolAero.ld.toFixed(1)}</div>
+      <div class="note">P_patrulha: ${C.P_elec_patrol.toFixed(0)} W elét.</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Frota 24h &amp; Regressão</div>
+      <div class="val">${C.n_rotacao} + 1 res.</div>
+      <div class="note">W0 hist. prev.: ${C.W0_reg.toFixed(2)} kg</div>
+    </div>
+  `;
+
+  // Tab 1: Mass Table
+  document.getElementById('massTableWrap').innerHTML = `
+    <table>
+      <tr><th>Parcela</th><th>Massa [kg]</th><th>% MTOM</th><th>Observação</th></tr>
+      <tr class="highlight"><td>Bateria</td><td>${C.M_bat.toFixed(2)}</td><td>${(C.M_bat/S.M0*100).toFixed(1)}%</td><td>${C.E_bat_Wh.toFixed(0)} Wh totais / ${C.E_util_Wh.toFixed(0)} Wh úteis</td></tr>
+      <tr><td>Estrutura (asa corrigida)</td><td>${C.M_str.toFixed(2)}</td><td>${(C.M_str/S.M0*100).toFixed(1)}%</td><td>k_str=${S.k_str}, AR=${S.AR}, W/S=${S.WS}</td></tr>
+      <tr><td>Sistemas (OW·M_empty)</td><td>${C.M_sys.toFixed(2)}</td><td>${(C.M_sys/S.M0*100).toFixed(1)}%</td><td>OW=${(S.OW*100).toFixed(0)}%</td></tr>
+      <tr><td>Carga Útil</td><td>${C.M_payload.toFixed(2)}</td><td>${(C.M_payload/S.M0*100).toFixed(1)}%</td><td>Jammer ${S.m_jammer} + Ant ${S.m_antena} + Det ${S.m_detetor}</td></tr>
+      <tr><td>Propulsão (Asa + VTOL)</td><td>${C.M_prop.toFixed(2)}</td><td>${(C.M_prop/S.M0*100).toFixed(1)}%</td><td>${(C.P_vtol_inst/1000).toFixed(2)} kW VTOL + ${(C.P_cruise_inst/1000).toFixed(2)} kW asa</td></tr>
+      <tr class="highlight"><td>Total (MTOM)</td><td>${S.M0.toFixed(2)}</td><td>100%</td><td>${C.M_bat < 0 ? '<span class="pill bad">INVIÁVEL (M_bat &lt; 0)</span>' : '<span class="pill ok">Válido</span>'}</td></tr>
+    </table>
+  `;
+  drawMassBar(C);
+
+  // Tab 2: Regression
+  const diffReg = S.M0 - C.W0_reg;
+  document.getElementById('regSummary').innerHTML = `
+    <p style="font-size:0.85rem; margin:0 0 8px;">
+      Equação ajustada em tempo real (<strong>n = ${C.reg.n}</strong> VTOLs):<br>
+      <code style="color:#38bdf8; font-size:0.9rem;">W0 = ${C.reg.b[0].toFixed(2)} + ${C.reg.b[1].toFixed(2)}·W_payload + ${C.reg.b[2].toFixed(2)}·W_battery</code>
+      <br>R² ajustado = <strong>${C.reg.r2aj.toFixed(3)}</strong> | Erro-padrão s = <strong>${C.reg.s.toFixed(2)} kg</strong>
+    </p>
+    <p style="font-size:0.83rem; margin:0;">
+      Previsão histórica para o vosso projeto (W_pay=${C.M_payload.toFixed(2)} kg, W_bat=${Math.max(0,C.M_bat).toFixed(2)} kg):
+      <strong>${C.W0_reg.toFixed(2)} kg</strong>
+      (desvio de ${diffReg >= 0 ? '+' : ''}${diffReg.toFixed(2)} kg face ao MTOM ${S.M0.toFixed(1)} kg —
+      ${Math.abs(diffReg) <= 2*C.reg.s ? '<span class="pill ok">Dentro do IP 95%</span>' : '<span class="pill warn">Fora da tendência histórica</span>'}).
+    </p>
+  `;
+  renderHistTable(C);
+  drawRegressionChart(C);
+
+  // Tab 3: Design points
+  document.getElementById('dpSummary').innerHTML = `
+    <table>
+      <tr><th>Restrição / Ponto</th><th>Valor</th><th>Detalhe</th></tr>
+      <tr><td>Voo de Asa (W/S = ${S.WS} N/m²)</td><td><strong>${(C.P_cruise_inst/C.W).toFixed(2)} W/N</strong> (${C.P_cruise_inst.toFixed(0)} W veio)</td><td>Limite perda: ${C.WS_stall_max.toFixed(1)} N/m²</td></tr>
+      <tr><td>Patrulha (${C.V_patrol.toFixed(1)} m/s)</td><td>${C.P_shaft_patrol.toFixed(0)} W veio / ${C.P_elec_patrol.toFixed(0)} W elét.</td><td>CL = ${C.patrolAero.cl.toFixed(2)}, L/D = ${C.patrolAero.ld.toFixed(1)}</td></tr>
+      <tr><td>VTOL Dia Quente (W/A = ${S.WA} N/m²)</td><td><strong>${C.vtolDP.pw_env.toFixed(2)} W/N</strong> (${(C.P_vtol_inst/1000).toFixed(2)} kW inst.)</td><td>${S.n_rot}× rotores Ø ${C.D_rot_in.toFixed(1)} in (${(C.D_rot_in*0.0254).toFixed(2)} m)</td></tr>
+    </table>
+  `;
+  drawWingDP(C);
+  drawVtolDP(C);
+
+  // Tab 4: Airfoils & Wing
+  renderAirfoilTable();
+  drawAirfoilChart();
+  document.getElementById('wingGeoWrap').innerHTML = `
+    <table>
+      <tr><th>Parâmetro Geométrico</th><th>Valor</th><th>Parâmetro</th><th>Valor</th></tr>
+      <tr><td>Área alar S</td><td>${C.area_S.toFixed(2)} m²</td><td>Envergadura b</td><td>${C.b.toFixed(2)} m</td></tr>
+      <tr><td>Corda raiz c_r / ponta c_t</td><td>${C.cr.toFixed(3)} / ${C.ct.toFixed(3)} m</td><td>CMA (c̄)</td><td>${C.mac.toFixed(3)} m</td></tr>
+      <tr><td>CD0 total / fator k</td><td>${C.CD0.toFixed(4)} / ${C.k.toFixed(4)}</td><td>CLmax equilibrado</td><td>${C.CLmax_trim.toFixed(3)}</td></tr>
+    </table>
+  `;
+
+  // Tab 5: Stability & Planform
+  const stabOk = C.CM_alpha <= -0.5;
+  document.getElementById('stabWrap').innerHTML = `
+    <table>
+      <tr><th>Métrica de Estabilidade</th><th>Valor</th><th>Estado</th></tr>
+      <tr><td>Centro Aerodinâmico (x_ac)</td><td>${C.x_ac.toFixed(3)} m</td><td>Ref. BA raiz</td></tr>
+      <tr><td>Ponto Neutro (x_np) / CG (x_cg)</td><td>${C.x_np.toFixed(3)} m / ${C.x_cg.toFixed(3)} m</td><td>SM = ${S.SM_pct.toFixed(1)}%</td></tr>
+      <tr><td>CL_α / CM_α</td><td>${C.CL_alpha.toFixed(2)} rad⁻¹ / <strong>${C.CM_alpha.toFixed(2)} rad⁻¹</strong></td><td>${stabOk ? '<span class="pill ok">Estável (≤ -0,5)</span>' : '<span class="pill warn">Margem curta</span>'}</td></tr>
+      <tr><td>Vol. Cauda Winglets (V_VS)</td><td>${((2*S.S_winglet*S.l_VS)/(C.area_S*C.b)).toFixed(3)}</td><td>Área total winglets: ${(2*S.S_winglet).toFixed(2)} m²</td></tr>
+    </table>
+  `;
+  drawPlanform(C);
+
+  // Tab 6: Mission & LPPT
+  document.getElementById('missionWrap').innerHTML = `
+    <table>
+      <tr><th>Indicador Operacional (LPPT ${S.perimetro_km} km)</th><th>Valor</th></tr>
+      <tr><td>Tempo de volta sem vento / vento médio (${S.V_vento_med} m/s)</td><td>${C.t_rev_0.toFixed(1)} min / <strong>${C.t_rev_med.toFixed(1)} min</strong></td></tr>
+      <tr><td>Tempo de volta com vento de projeto (${S.V_vento_proj} m/s)</td><td>${isFinite(C.t_rev_proj) ? C.t_rev_proj.toFixed(1)+' min' : '<span class="pill bad">Vento ≥ V_patrulha</span>'}</td></tr>
+      <tr><td>Voltas por voo / Energia patrulha disponível</td><td>${C.voltas.toFixed(1)} voltas / ${C.E_patrol_avail.toFixed(0)} Wh</td></tr>
+      <tr class="highlight"><td>Frota mínima 24/7 (c/ turnaround ${S.t_turnaround} min)</td><td><strong>${C.n_rotacao} em rotação + 1 de reserva = ${C.n_frota} aeronaves</strong></td></tr>
+    </table>
+  `;
+  document.getElementById('phaseTableWrap').innerHTML = `
+    <table>
+      <tr><th>Fase</th><th>Energia [Wh]</th><th>% Útil</th></tr>
+      <tr><td>Subida vertical + hover + transição</td><td>${C.E_vtol_up.toFixed(1)}</td><td>${(C.E_vtol_up/C.E_util_Wh*100).toFixed(1)}%</td></tr>
+      <tr><td>Subida em asa + Trânsito ida/volta</td><td>${(C.E_climb+C.E_transit).toFixed(1)}</td><td>${((C.E_climb+C.E_transit)/C.E_util_Wh*100).toFixed(1)}%</td></tr>
+      <tr class="highlight"><td>Patrulha contínua (${C.t_patrol_min.toFixed(0)} min)</td><td>${C.E_patrol_avail.toFixed(1)}</td><td>${(C.E_patrol_avail/C.E_util_Wh*100).toFixed(1)}%</td></tr>
+      <tr><td>Descida + VTOL final</td><td>${C.E_vtol_dn.toFixed(1)}</td><td>${(C.E_vtol_dn/C.E_util_Wh*100).toFixed(1)}%</td></tr>
+      <tr><td>Reservas (voo ${S.t_reserva} min + jammer ${S.t_res_jam} min)</td><td>${(C.E_res_flight+C.E_res_jam).toFixed(1)}</td><td>${((C.E_res_flight+C.E_res_jam)/C.E_util_Wh*100).toFixed(1)}%</td></tr>
+    </table>
+  `;
+  drawRevisitChart(C);
+
+  // Sync Export text
+  document.getElementById('exportCode').value =
+`# --- PARÂMETROS SINCRONIZADOS (PIC UAV VTOL) ---
+MTOW = ${S.M0.toFixed(2)}            # kg (limite ${S.M_limit} kg)
+M_payload = ${C.M_payload.toFixed(2)}       # kg (jammer=${S.m_jammer}, ant=${S.m_antena}, det=${S.m_detetor})
+M_battery = ${C.M_bat.toFixed(2)}       # kg (${C.E_bat_Wh.toFixed(0)} Wh)
+AR = ${S.AR.toFixed(2)}
+WS_proj = ${S.WS.toFixed(1)}         # N/m2 -> S=${C.area_S.toFixed(2)} m2, b=${C.b.toFixed(2)} m
+WA_proj = ${S.WA.toFixed(1)}         # N/m2 -> ${S.n_rot}x rotores ${C.D_rot_in.toFixed(1)} in
+CD0 = ${C.CD0.toFixed(4)}
+e_oswald = ${S.e_oswald.toFixed(3)}
+CLmax = ${C.CLmax_trim.toFixed(3)}         # perfil ${S.airfoil}
+V_patrol = ${C.V_patrol.toFixed(1)}        # m/s (Vs = ${C.Vs.toFixed(1)} m/s)
+V_max = ${S.V_max.toFixed(1)}           # m/s
+eta_p = ${S.eta_p.toFixed(2)}
+eta_ES = ${S.eta_ES.toFixed(3)}
+P_jam = ${S.P_jam_pico}            # W pico (${S.duty_jam}% ciclo)
+t_patrulha = ${C.t_patrol_min.toFixed(1)}     # min (${(C.t_patrol_min/60).toFixed(2)} h)
+
+# --- LINHA TABELA LATEX ---
+# MTOM: ${S.M0.toFixed(1)} kg | Bateria: ${C.M_bat.toFixed(2)} kg | S: ${C.area_S.toFixed(2)} m^2 | b: ${C.b.toFixed(2)} m | Autonomia: ${C.t_patrol_min.toFixed(0)} min | Frota: ${C.n_rotacao}+1`;
+
+  localStorage.setItem('pic_uav_state', JSON.stringify(S));
+}
+
+// ==================== CANVAS CHARTS HELPER ====================
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  const w = c.clientWidth || 500, h = c.height;
+  c.width = w;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  return { ctx, w, h };
+}
+function drawAxes(ctx, w, h, pad, xmin, xmax, ymin, ymax, xlabel, ylabel) {
+  ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui';
+  for (let i=0; i<=5; i++) {
+    const x = pad.l + (w-pad.l-pad.r)*i/5;
+    const y = h-pad.b - (h-pad.t-pad.b)*i/5;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h-pad.b); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w-pad.r, y); ctx.stroke();
+    ctx.fillText((xmin + (xmax-xmin)*i/5).toFixed(0), x-10, h-pad.b+14);
+    ctx.fillText((ymin + (ymax-ymin)*i/5).toFixed(1), 6, y+4);
+  }
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText(xlabel, w/2 - 40, h - 4);
+  ctx.save(); ctx.translate(12, h/2 + 30); ctx.rotate(-Math.PI/2); ctx.fillText(ylabel, 0, 0); ctx.restore();
+}
+const mapX = (v, xmin, xmax, w, pad) => pad.l + ((v-xmin)/(xmax-xmin))*(w-pad.l-pad.r);
+const mapY = (v, ymin, ymax, h, pad) => h-pad.b - ((v-ymin)/(ymax-ymin))*(h-pad.t-pad.b);
+
+function drawMassBar(C) {
+  const { ctx, w, h } = setupCanvas('massChart');
+  const items = [
+    { name:'Bateria', val:Math.max(0,C.M_bat), col:'#f97316' },
+    { name:'Estrutura', val:C.M_str, col:'#eab308' },
+    { name:'Sistemas', val:C.M_sys, col:'#22c55e' },
+    { name:'Payload', val:C.M_payload, col:'#38bdf8' },
+    { name:'Propulsão', val:C.M_prop, col:'#a855f7' }
+  ];
+  const pad = { l:80, r:30, t:18, b:25 };
+  const maxV = Math.max(S.M0*0.5, ...items.map(i=>i.val), 1);
+  items.forEach((it, idx) => {
+    const y = pad.t + idx * 38;
+    const bw = (it.val / maxV) * (w - pad.l - pad.r);
+    ctx.fillStyle = '#cbd5e1'; ctx.font = '12px system-ui';
+    ctx.fillText(it.name, 10, y+17);
+    ctx.fillStyle = it.col;
+    ctx.fillRect(pad.l, y+4, bw, 22);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`${it.val.toFixed(2)} kg (${(it.val/S.M0*100).toFixed(1)}%)`, pad.l + Math.min(bw+6, w-pad.l-110), y+19);
+  });
+}
+
+function drawRegressionChart(C) {
+  const { ctx, w, h } = setupCanvas('regChart');
+  const pad = { l:46, r:16, t:18, b:32 };
+  drawAxes(ctx, w, h, pad, 0, 36, 0, 36, 'W0 real [kg]', 'W0 previsto [kg]');
+  ctx.strokeStyle = '#64748b'; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(mapX(0,0,36,w,pad), mapY(0,0,36,h,pad)); ctx.lineTo(mapX(36,0,36,w,pad), mapY(36,0,36,h,pad)); ctx.stroke();
+  ctx.setLineDash([]);
+  histVTOL.forEach(d => {
+    const yh = C.reg.b[0] + C.reg.b[1]*d.Wpay + C.reg.b[2]*d.Wbat;
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath(); ctx.arc(mapX(d.W0,0,36,w,pad), mapY(yh,0,36,h,pad), 4, 0, Math.PI*2); ctx.fill();
+  });
+  // Ponto do projeto
+  ctx.fillStyle = '#ef4444';
+  const px = mapX(S.M0,0,36,w,pad), py = mapY(C.W0_reg,0,36,h,pad);
+  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f8fafc'; ctx.fillText(`Projeto (${S.M0.toFixed(1)} vs ${C.W0_reg.toFixed(1)})`, px+8, py-6);
+}
+
+function drawWingDP(C) {
+  const { ctx, w, h } = setupCanvas('wingDpChart');
+  const pad = { l:48, r:16, t:18, b:34 };
+  const xmin=40, xmax=170, ymin=0, ymax=10;
+  drawAxes(ctx, w, h, pad, xmin, xmax, ymin, ymax, 'Carga Alar W/S [N/m²]', 'P/W veio [W/N]');
+  function plotCurve(fn, col, label, ly) {
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+    for (let ws=xmin; ws<=xmax; ws+=2) {
+      const q = 0.5*C.rho_op*fn.V**2;
+      const cl = (fn.n*ws)/q;
+      const cd = C.CD0 + C.k*cl*cl + 0.02*(cl-0.43)**2;
+      const pw = (fn.roc + fn.V*(cd/cl))/S.eta_p;
+      const x = mapX(ws,xmin,xmax,w,pad), y = mapY(Math.min(ymax,pw),ymin,ymax,h,pad);
+      if (ws===xmin) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = col; ctx.fillText(label, w-130, ly);
+  }
+  plotCurve({V:C.V_patrol, n:S.n_turn, roc:0}, '#38bdf8', `Patrulha ${C.V_patrol.toFixed(1)} m/s`, 24);
+  plotCurve({V:S.V_max, n:1, roc:0}, '#f59e0b', `V_máx ${S.V_max} m/s`, 38);
+  plotCurve({V:Math.max(1.3*C.Vs,15.7), n:1, roc:S.RoC}, '#a78bfa', `Subida ${S.RoC} m/s`, 52);
+
+  // Stall line
+  if (C.WS_stall_max >= xmin && C.WS_stall_max <= xmax) {
+    const sx = mapX(C.WS_stall_max,xmin,xmax,w,pad);
+    ctx.strokeStyle = '#ef4444'; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, h-pad.b); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ef4444'; ctx.fillText(`Perda ${C.WS_stall_max.toFixed(0)}`, sx+4, pad.t+14);
+  }
+  // Design Point
+  const dx = mapX(S.WS,xmin,xmax,w,pad), dy = mapY(Math.min(ymax, C.P_cruise_inst/C.W),ymin,ymax,h,pad);
+  ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(dx, dy, 6, 0, Math.PI*2); ctx.fill();
+}
+
+function drawVtolDP(C) {
+  const { ctx, w, h } = setupCanvas('vtolDpChart');
+  const pad = { l:48, r:16, t:18, b:34 };
+  const xmin=60, xmax=500, ymin=10, ymax=24;
+  drawAxes(ctx, w, h, pad, xmin, xmax, ymin, ymax, 'Carga Disco W/A [N/m²]', 'P/W veio [W/N]');
+  function plotV(fn, col, label, ly) {
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+    for (let wa=xmin; wa<=xmax; wa+=8) {
+      const vh = Math.sqrt(wa/(2*C.rho_hot));
+      let pw = vh/S.FoM;
+      if (fn==='up') pw = (S.V_vert_up/2 + Math.sqrt((S.V_vert_up/2)**2 + vh*vh))/S.FoM;
+      if (fn==='dn') {
+        const r = -1.5/vh;
+        pw = Math.max(0.5*pw, ((-1.5 + (1-1.125*r-1.372*r*r-1.718*r**3-0.655*r**4)*vh)/S.FoM));
+      }
+      const x = mapX(wa,xmin,xmax,w,pad), y = mapY(Math.min(ymax,Math.max(ymin,pw)),ymin,ymax,h,pad);
+      if (wa===xmin) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = col; ctx.fillText(label, w-125, ly);
+  }
+  plotV('hov', '#38bdf8', 'Hover', 24);
+  plotV('up', '#f59e0b', `Subida ${S.V_vert_up} m/s`, 38);
+  plotV('dn', '#ef4444', 'Descida -1.5 m/s', 52);
+  const dx = mapX(S.WA,xmin,xmax,w,pad), dy = mapY(Math.min(ymax, C.vtolDP.pw_env),ymin,ymax,h,pad);
+  ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(dx, dy, 6, 0, Math.PI*2); ctx.fill();
+}
+
+function drawAirfoilChart() {
+  const { ctx, w, h } = setupCanvas('airfoilChart');
+  const pad = { l:46, r:16, t:18, b:32 };
+  const keys = Object.keys(airfoilsDB);
+  const maxLD = 100;
+  keys.forEach((k, idx) => {
+    const af = airfoilsDB[k];
+    const x = pad.l + idx * ((w-pad.l-pad.r)/keys.length) + 8;
+    const bw = 22;
+    const bh = (af.ldMax500 / maxLD) * (h - pad.t - pad.b);
+    ctx.fillStyle = k === S.airfoil ? '#22c55e' : '#3b82f6';
+    ctx.fillRect(x, h-pad.b-bh, bw, bh);
+    ctx.fillStyle = '#e2e8f0'; ctx.font = '10px system-ui';
+    ctx.fillText(af.ldMax500.toFixed(0), x+2, h-pad.b-bh-4);
+    ctx.fillText(k.replace('NACA ','N'), x-2, h-pad.b+13);
+  });
+  ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui';
+  ctx.fillText('(CL/CD)_max a Re=500k (verde = selecionado)', pad.l, 14);
+}
+
+function drawPlanform(C) {
+  const svg = document.getElementById('planformSvg');
+  const scale = 105; // px per m
+  const hb = (C.b/2)*scale, cr = C.cr*scale, ct = C.ct*scale;
+  const x_tip = Math.tan(S.sweep_LE*Math.PI/180)*hb;
+  const cg_y = C.x_cg*scale, np_y = C.x_np*scale;
+  const y_boom = hb * 0.42;
+  const r_rot = (C.D_rot_in*0.0254/2)*scale;
+  svg.innerHTML = `
+    <polygon points="0,0 ${hb},${x_tip} ${hb},${x_tip+ct} 0,${cr}" fill="#1e3a8a" stroke="#38bdf8" stroke-width="2" opacity="0.85"/>
+    <polygon points="0,0 ${-hb},${x_tip} ${-hb},${x_tip+ct} 0,${cr}" fill="#1e3a8a" stroke="#38bdf8" stroke-width="2" opacity="0.85"/>
+    <rect x="-18" y="-12" width="36" height="${cr+26}" rx="12" fill="#334155" stroke="#94a3b8"/>
+    <line x1="${y_boom}" y1="${cg_y-55}" x2="${y_boom}" y2="${cg_y+55}" stroke="#cbd5e1" stroke-width="4"/>
+    <line x1="${-y_boom}" y1="${cg_y-55}" x2="${-y_boom}" y2="${cg_y+55}" stroke="#cbd5e1" stroke-width="4"/>
+    <circle cx="${y_boom}" cy="${cg_y-55}" r="${r_rot}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+    <circle cx="${y_boom}" cy="${cg_y+55}" r="${r_rot}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+    <circle cx="${-y_boom}" cy="${cg_y-55}" r="${r_rot}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+    <circle cx="${-y_boom}" cy="${cg_y+55}" r="${r_rot}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+    <circle cx="0" cy="${cg_y}" r="5" fill="#22c55e"/>
+    <polygon points="0,${np_y-5} -5,${np_y+5} 5,${np_y+5}" fill="#ef4444"/>
+    <text x="10" y="${cg_y+4}" fill="#4ade80" font-size="11">CG (${C.x_cg.toFixed(2)}m)</text>
+    <text x="10" y="${np_y+12}" fill="#f87171" font-size="11">NP (${C.x_np.toFixed(2)}m)</text>
+    <text x="-245" y="-48" fill="#cbd5e1" font-size="11">Envergadura b = ${C.b.toFixed(2)} m | S = ${C.area_S.toFixed(2)} m² | AR = ${S.AR}</text>
+  `;
+}
+
+function drawRevisitChart(C) {
+  const { ctx, w, h } = setupCanvas('revisitChart');
+  const pad = { l:46, r:16, t:18, b:32 };
+  const xmax = 12, ymax = 35;
+  drawAxes(ctx, w, h, pad, 0, xmax, 0, ymax, 'Vento [m/s]', 'Tempo de volta [min]');
+  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let vw=0; vw<=xmax; vw+=0.5) {
+    let t = vw < C.V_patrol ? (S.perimetro_km*1000 / ((C.V_patrol**2 - 0.5*vw**2)/C.V_patrol))/60 : ymax;
+    const x = mapX(vw,0,xmax,w,pad), y = mapY(Math.min(ymax,t),0,ymax,h,pad);
+    if (vw===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  const mx = mapX(S.V_vento_med,0,xmax,w,pad), my = mapY(Math.min(ymax,C.t_rev_med),0,ymax,h,pad);
+  ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(mx,my,5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#e2e8f0'; ctx.fillText(`Médio (${C.t_rev_med.toFixed(1)} min)`, mx+6, my-6);
+}
+
+// ==================== TABELAS & EVENTOS ====================
+function renderHistTable(C) {
+  let html = `<tr><th>Modelo</th><th>W0</th><th>W_bat</th><th>W_pay</th><th>Prev.</th><th>Erro</th></tr>`;
+  histVTOL.forEach(d => {
+    const yh = C.reg.b[0] + C.reg.b[1]*d.Wpay + C.reg.b[2]*d.Wbat;
+    html += `<tr><td>${d.m}</td><td>${d.W0.toFixed(1)}</td><td>${d.Wbat.toFixed(2)}</td><td>${d.Wpay.toFixed(2)}</td><td>${yh.toFixed(2)}</td><td>${(d.W0-yh).toFixed(2)}</td></tr>`;
+  });
+  document.getElementById('histTable').innerHTML = html;
+}
+
+function renderAirfoilTable() {
+  let html = `<tr><th>Perfil</th><th>CL_max (500k)</th><th>CD_min (500k)</th><th>(L/D)_max</th><th>Cm0</th><th>CL_max (160k)</th></tr>`;
+  for (const [k, a] of Object.entries(airfoilsDB)) {
+    html += `<tr class="${k===S.airfoil?'highlight':''}" style="cursor:pointer" onclick="S.airfoil='${k}';syncInputs();render();">
+      <td>${a.name}</td><td>${a.clMax500.toFixed(3)}</td><td>${a.cdMin500.toFixed(5)}</td>
+      <td>${a.ldMax500.toFixed(1)}</td><td>${a.cm0_500.toFixed(4)}</td><td>${a.clMax160.toFixed(3)}</td></tr>`;
+  }
+  document.getElementById('airfoilTable').innerHTML = html;
+}
+
+function addRefDrone() {
+  const m = document.getElementById('newModel').value.trim() || `Modelo ${histVTOL.length+1}`;
+  const W0 = parseFloat(document.getElementById('newW0').value);
+  const Wbat = parseFloat(document.getElementById('newWbat').value);
+  const Wpay = parseFloat(document.getElementById('newWpay').value);
+  if (W0>0 && Wbat>=0 && Wpay>=0) { histVTOL.push({m, W0, Wbat, Wpay}); render(); }
+}
+
+function syncInputs() {
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.getAttribute('data-k');
+    if (S[k] !== undefined) el.value = S[k];
+  });
+}
+
+function loadPreset(name) {
+  S = { ...PRESETS[name] };
+  syncInputs();
+  render();
+}
+
+function openTab(tabId) {
+  document.querySelectorAll('#tabNav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
+  render();
+}
+
+// ==================== IMPORTADOR DE .PY / .JSON / RELATÓRIO ====================
+function parseImportedText(raw) {
+  const txt = raw || document.getElementById('importText').value;
+  const log = [];
+  // 1. Tentar JSON direto
+  try {
+    const j = JSON.parse(txt);
+    Object.keys(j).forEach(k => { if (S[k] !== undefined && typeof j[k] !== 'object') { S[k] = j[k]; log.push(`${k} → ${j[k]}`); } });
+    if (log.length) { syncInputs(); render(); document.getElementById('importLog').innerHTML = `<span class="pill ok">JSON aplicado (${log.length} campos)</span>`; return; }
+  } catch(e) {}
+
+  // 2. Regex Python & Relatórios (suporta vírgula decimal PT)
+  const rules = [
+    ['M0', /(?:MTOW|MTOM|M0|W0)\s*[=:]\s*([\d.,]+)/i],
+    ['WS', /(?:WS_proj|W\/S|carga alar)\s*[=:]?\s*([\d.,]+)/i],
+    ['WA', /(?:WA_proj|W\/A|carga no disco)\s*[=:]?\s*([\d.,]+)/i],
+    ['AR', /\bAR\s*[=:]\s*([\d.,]+)/i],
+    ['V_max', /(?:V_max|Velocidade máxima)\s*[=:]\s*([\d.,]+)/i],
+    ['eta_p', /\b(?:eta|eta_p)\s*[=:]\s*([\d.,]+)/i],
+    ['FoM', /\bFoM\s*[=:]\s*([\d.,]+)/i],
+    ['n_rot', /\bn_rot\s*[=:]\s*(\d+)/i],
+    ['P_jam_pico', /(?:P_jam|P_jam_pico)\s*[=:]\s*([\d.,]+)/i],
+    ['perimetro_km', /(?:perimetro|perímetro)[^0-9]*([\d.,]+)\s*km/i],
+    ['ebat_wh', /([\d.,]+)\s*Wh\/kg/i]
+  ];
+  rules.forEach(([key, rx]) => {
+    const m = txt.match(rx);
+    if (m) {
+      const val = parseFloat(m[1].replace(',', '.'));
+      if (!isNaN(val)) { S[key] = val; log.push(`${key} = ${val}`); }
+    }
+  });
+  // Payload total se vier de código (ajusta m_jammer proporcionalmente ou coloca em m_extra)
+  const mPay = txt.match(/(?:M_payload|W_payload|Payload|Carga útil)\s*[=:]?\s*([\d.,]+)/i);
+  if (mPay) {
+    const pVal = parseFloat(mPay[1].replace(',', '.'));
+    if (!isNaN(pVal)) {
+      S.m_jammer = +(pVal * 0.68).toFixed(2);
+      S.m_antena = +(pVal * 0.18).toFixed(2);
+      S.m_detetor = +(pVal - S.m_jammer - S.m_antena).toFixed(2);
+      S.m_extra = 0;
+      log.push(`M_payload = ${pVal} kg`);
+    }
+  }
+  syncInputs(); render();
+  document.getElementById('importLog').innerHTML = log.length
+    ? `<span class="pill ok">Atualizado:</span> ${log.join(' · ')}`
+    : `<span class="pill warn">Nenhuma variável reconhecida. Experimenta formato "MTOW = 22.5" ou JSON.</span>`;
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'estado_projeto_uav.json'; a.click();
+}
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById('exportCode').value);
+  alert('Código Python e resumo copiados!');
+}
+
+// ==================== INIT ====================
+const afSel = document.getElementById('airfoilSelect');
+Object.entries(airfoilsDB).forEach(([k,v]) => {
+  const o = document.createElement('option'); o.value = k; o.textContent = v.name; afSel.appendChild(o);
+});
+document.querySelectorAll('[data-k]').forEach(el => {
+  el.addEventListener('input', () => {
+    const k = el.getAttribute('data-k');
+    S[k] = el.tagName === 'SELECT' ? el.value : parseFloat(el.value) || 0;
+    render();
+  });
+});
+document.querySelectorAll('#tabNav button').forEach(b => b.addEventListener('click', () => openTab(b.dataset.tab)));
+
+const dz = document.getElementById('dropzone'), fi = document.getElementById('fileInput');
+dz.onclick = () => fi.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  if (e.dataTransfer.files[0]) readF(e.dataTransfer.files[0]);
+};
+fi.onchange = () => { if (fi.files[0]) readF(fi.files[0]); };
+function readF(file) {
+  const r = new FileReader();
+  r.onload = () => { document.getElementById('importText').value = r.result; parseImportedText(r.result); };
+  r.readAsText(file);
+}
+
+window.addEventListener('resize', render);
+syncInputs();
+render();
+</script>
+</body>
+</html>
